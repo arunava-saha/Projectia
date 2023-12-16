@@ -1,15 +1,80 @@
-export const create = (req, res) => {
-  res.send("create");
+import Task from "../models/projectSchema.js";
+import dayjs from "dayjs";
+export const create = async (req, res, next) => {
+  try {
+    const { id } = req.user;
+    const completetionDate = new Date(req.body.date);
+    const task = new Task({ ...req.body, userId: id, date: completetionDate });
+    const saveTask = await task.save();
+    return res.status(201).json({ task: saveTask });
+  } catch (err) {
+    next(err);
+  }
 };
-export const getProject = (req, res) => {
-  res.send("getProject");
+
+export const update = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const task = await Task.findByIdAndUpdate(
+      id,
+      { ...req.body },
+      { new: true }
+    );
+    return res.status(201).json({ task });
+  } catch (err) {
+    next(err);
+  }
 };
-export const getAllProjects = (req, res) => {
-  res.send("getAllProjects");
+export const remove = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await Task.findByIdAndDelete(id);
+    return res.status(201);
+  } catch (err) {
+    next(err);
+  }
 };
-export const updateProject = (req, res) => {
-  res.send("updateProject");
+
+export const project = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const task = await Task.findById(id);
+    return res.status(201).json({ task });
+  } catch (err) {
+    next(err);
+  }
 };
-export const deleteProject = (req, res) => {
-  res.send("deleteProject");
+
+export const projects = async (req, res, next) => {
+  try {
+    const type = req.query?.type;
+    const day = req.query?.day;
+    const { id } = req.user;
+    var min, max;
+    if (day === "today") {
+      min = dayjs().format("YYYY-MM-DD");
+      max = dayjs().format("YYYY-MM-DD");
+    } else if (day === "seven") {
+      min = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+      max = dayjs().format("YYYY-MM-DD");
+    } else if (day === "thirty") {
+      min = dayjs().subtract(30, "day").format("YYYY-MM-DD");
+      max = dayjs().format("YYYY-MM-DD");
+    }
+    if (type) {
+      var tasks = await Task.find({
+        userId: id,
+        type,
+        ...(day && { date: { $lte: new Date(max), $gte: new Date(min) } }),
+      });
+    } else {
+      var tasks = await Task.find({
+        userId: id,
+        ...(day && { date: { $lte: new Date(max), $gte: new Date(min) } }),
+      });
+    }
+    return res.status(201).json({ tasks });
+  } catch (err) {
+    next(err);
+  }
 };
